@@ -23,14 +23,27 @@ function Dashboard() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const loadDocuments = useCallback(async () => {
-    try {
-      const res = await api.get("/documents/");
-      setDocuments(Array.isArray(res.data) ? res.data : []);
-    } catch {
-      setError("Failed to load documents.");
+const loadDocuments = useCallback(async () => {
+  try {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      console.log("[Dashboard] No token found, redirecting to login");
+      navigate("/login");
+      return;
     }
-  }, []);
+
+    console.log("[Dashboard] Loading documents...");
+    const res = await api.get("/documents/?limit=5");
+    console.log("[Dashboard] Documents loaded:", res.data);
+    
+    setDocuments(Array.isArray(res.data.results || res.data) ? (res.data.results || res.data).slice(0, 5) : []);
+  } catch (err) {
+    console.error("[Dashboard] Error:", err.message);
+    if (err.response?.status === 401 || err.response?.status === 403) {
+      navigate("/login");
+    }
+  }
+}, [navigate]);
 
   useEffect(() => {
     loadDocuments();

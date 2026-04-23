@@ -18,6 +18,14 @@ import api from "../api/axios";
 
 const PIE_COLORS = ["#0f172a", "#334155", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0"];
 
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+}
+
 function StatCard({ title, value, subtitle }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -112,6 +120,13 @@ function Statistics() {
             <option value="day">Daily activity</option>
             <option value="week">Weekly activity</option>
           </select>
+        </div>
+
+        <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <p className="text-xs uppercase tracking-[0.12em] text-blue-600">Total Storage Used</p>
+          <p className="mt-2 text-3xl font-semibold text-blue-900">
+            {formatBytes(stats?.kpis?.total_storage_bytes || 0)}
+          </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

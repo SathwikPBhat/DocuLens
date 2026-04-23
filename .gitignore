@@ -33,6 +33,8 @@ node_modules/
 dist/
 build/
 
+media/
+
 # Env files
 .env
 .env.*

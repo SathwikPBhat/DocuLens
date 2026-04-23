@@ -7,6 +7,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
+
 
 from .models import Document
 from collections import Counter
@@ -37,6 +39,8 @@ class DocumentListCreateView(generics.ListCreateAPIView):
     serializer_class = DocumentSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
+    pagination_class = PageNumberPagination  
+
 
     def get_queryset(self):
         queryset = Document.objects.select_related("user").prefetch_related("tags").filter(user=self.request.user)
@@ -331,7 +335,8 @@ class DocumentStatisticsView(APIView):
         trunc_fn = TruncWeek if interval == "week" else TruncDay
 
         upload_qs = (
-            Document.objects.annotate(period=trunc_fn("uploaded_at"))
+            Document.objects.filter(user=request.user)
+            .annotate(period=trunc_fn("uploaded_at"))
             .values("period")
             .annotate(count=Count("id"))
             .order_by("period")
@@ -345,14 +350,19 @@ class DocumentStatisticsView(APIView):
         ]
 
         tag_qs = (
-            Tag.objects.annotate(count=Count("documents"))
+            Tag.objects.annotate(
+                count=Count("documents", filter=Q(documents__user=request.user))
+            )
             .filter(count__gt=0)
             .order_by("-count", "name")[:top_tags]
         )
         tag_distribution = [{"name": tag.name, "count": tag.count} for tag in tag_qs]
 
-        docs = Document.objects.only("file", "file_type", "extracted_text")
+        docs = Document.objects.filter(user=request.user).only("file", "file_type", "extracted_text", "file_size")
         total_documents = docs.count()
+
+        # Calculate total storage
+        total_storage_bytes = sum(doc.file_size or 0 for doc in docs)
 
         file_type_counter = Counter()
         extracted_count = 0
@@ -388,7 +398,7 @@ class DocumentStatisticsView(APIView):
             "percentage_with_extracted_text": round((extracted_count / total_documents) * 100, 2) if total_documents else 0.0,
         }
 
-        unorganized_documents = Document.objects.filter(tags__isnull=True).count()
+        unorganized_documents = Document.objects.filter(user=request.user, tags__isnull=True).count()
 
         payload = {
             "kpis": {
@@ -396,6 +406,7 @@ class DocumentStatisticsView(APIView):
                 "organized_documents": max(total_documents - unorganized_documents, 0),
                 "unorganized_documents": unorganized_documents,
                 "search_ready_documents": extracted_count,
+                "total_storage_bytes": total_storage_bytes,
             },
             "upload_activity": upload_activity,
             "tag_distribution": tag_distribution,

@@ -10,6 +10,8 @@ function Documents() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -28,6 +30,7 @@ function Documents() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setQuery((prev) => ({ ...prev, search: normalize(searchInput) }));
+      setPage(1);
     }, 300);
 
     return () => clearTimeout(timer);
@@ -47,10 +50,18 @@ function Documents() {
             file_type: query.fileType,
             date: query.datePreset,
             sort: query.sort,
+            page: page,
           },
         });
 
-        setDocuments(Array.isArray(res.data) ? res.data : []);
+        const data = res.data;
+        if (data.results) {
+          setDocuments(Array.isArray(data.results) ? data.results : []);
+          setTotalPages(Math.ceil((data.count || 0) / 6));
+        } else {
+          setDocuments(Array.isArray(data) ? data : []);
+          setTotalPages(1);
+        }
       } catch {
         setError("Failed to load documents.");
       } finally {
@@ -59,7 +70,7 @@ function Documents() {
     };
 
     fetchDocuments();
-  }, [query]);
+  }, [query, page]);
 
   useEffect(() => {
     setSelectedIds((prev) => prev.filter((id) => documents.some((doc) => doc.id === id)));
@@ -127,6 +138,7 @@ function Documents() {
       if (prev.tags.includes(tag)) return prev;
       return { ...prev, tags: [...prev.tags, tag] };
     });
+    setPage(1);
   };
 
   const removeTagFilter = (rawTag) => {
@@ -135,6 +147,7 @@ function Documents() {
       ...prev,
       tags: prev.tags.filter((t) => t !== tag),
     }));
+    setPage(1);
   };
 
   const clearAllFilters = () => {
@@ -147,6 +160,7 @@ function Documents() {
       datePreset: "all",
       sort: "newest",
     });
+    setPage(1);
   };
 
   const toggleSelected = (docId) => {
@@ -226,7 +240,7 @@ function Documents() {
             All Documents
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
-            Unified search and filters across tags, file type, date, and extracted text.
+            Page {page} of {totalPages}
           </p>
         </div>
 
@@ -253,7 +267,10 @@ function Documents() {
 
             <select
               value={query.fileType}
-              onChange={(e) => setQuery((prev) => ({ ...prev, fileType: e.target.value }))}
+              onChange={(e) => {
+                setQuery((prev) => ({ ...prev, fileType: e.target.value }));
+                setPage(1);
+              }}
               className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
             >
               <option value="all">All file types</option>
@@ -264,7 +281,10 @@ function Documents() {
 
             <select
               value={query.datePreset}
-              onChange={(e) => setQuery((prev) => ({ ...prev, datePreset: e.target.value }))}
+              onChange={(e) => {
+                setQuery((prev) => ({ ...prev, datePreset: e.target.value }));
+                setPage(1);
+              }}
               className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
             >
               <option value="all">All dates</option>
@@ -275,7 +295,10 @@ function Documents() {
 
             <select
               value={query.sort}
-              onChange={(e) => setQuery((prev) => ({ ...prev, sort: e.target.value }))}
+              onChange={(e) => {
+                setQuery((prev) => ({ ...prev, sort: e.target.value }));
+                setPage(1);
+              }}
               className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
             >
               <option value="newest">Newest first</option>
@@ -301,13 +324,14 @@ function Documents() {
                 <button
                   key={tag}
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
                     setQuery((prev) =>
                       active
                         ? { ...prev, tags: prev.tags.filter((t) => t !== tag) }
                         : { ...prev, tags: [...prev.tags, tag] },
-                    )
-                  }
+                    );
+                    setPage(1);
+                  }}
                   className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
                     active
                       ? "bg-slate-900 text-white"
@@ -536,6 +560,33 @@ function Documents() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && !error && visibleDocuments.length > 0 && (
+          <div className="mt-8 flex justify-between items-center">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(p - 1, 1))}
+              disabled={page === 1}
+              className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Previous
+            </button>
+
+            <span className="text-sm text-slate-600">
+              Page {page} of {totalPages}
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+              disabled={page === totalPages || totalPages === 0}
+              className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              Next
+            </button>
           </div>
         )}
       </div>
