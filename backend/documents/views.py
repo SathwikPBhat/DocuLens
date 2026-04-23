@@ -219,7 +219,8 @@ class TagSuggestionView(APIView):
         content_candidates = self._extract_content_tags(filename)
 
         recent_docs = (
-            Document.objects.prefetch_related("tags")
+            Document.objects.filter(user=self.request.user)  # Add this line
+            .prefetch_related("tags")
             .order_by("-uploaded_at")[:25]
         )
         recent_tags = []
@@ -232,9 +233,11 @@ class TagSuggestionView(APIView):
                     recent_tags.append(normalized)
 
         popular_qs = (
-            Tag.objects.annotate(doc_count=Count("documents"))
+            Tag.objects.filter(documents__user=self.request.user)  # Add this line
+            .annotate(doc_count=Count("documents"))
             .order_by("-doc_count", "name")[:50]
         )
+        
         popular_map = {}
         for tag in popular_qs:
             popular_map[normalize_tag(tag.name)] = tag.doc_count

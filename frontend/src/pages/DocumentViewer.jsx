@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../api/axios";
 import TagInput from "../components/TagInput";
+import AskDocumentPanel from "../components/AskDocumentPanel";
 
 function DocumentViewer() {
   const { id } = useParams();
@@ -467,6 +468,8 @@ function DocumentViewer() {
           </aside>
         </div>
       </div>
+
+      <AskDocumentPanel documentId={id} />
     </div>
   );
 }
