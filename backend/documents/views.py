@@ -35,11 +35,11 @@ def parse_bool(value):
 class DocumentListCreateView(generics.ListCreateAPIView):
     queryset = Document.objects.select_related("user").prefetch_related("tags").order_by("-uploaded_at")
     serializer_class = DocumentSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):
-        queryset = Document.objects.select_related("user").prefetch_related("tags")
+        queryset = Document.objects.select_related("user").prefetch_related("tags").filter(user=self.request.user)
 
         search = normalize_query(self.request.query_params.get("q"))
         search_inside = normalize_query(self.request.query_params.get("search_inside", "false")) in {
@@ -122,7 +122,7 @@ class DocumentListCreateView(generics.ListCreateAPIView):
                 user = User.objects.create_user(username="demo_uploader")
 
         document = serializer.save(
-            user=user,
+            user=self.request.user,
             title=title,
             file_type=(uploaded_file.content_type or "")[:255],
             file_size=uploaded_file.size,
@@ -134,7 +134,7 @@ class DocumentListCreateView(generics.ListCreateAPIView):
 class DocumentDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Document.objects.select_related("user").prefetch_related("tags")
     serializer_class = DocumentSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def perform_destroy(self, instance):
         if instance.file:
@@ -143,7 +143,7 @@ class DocumentDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class DocumentTagsUpdateView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request, pk):
         instance = get_object_or_404(
@@ -168,7 +168,7 @@ class BulkDeleteSerializer(serializers.Serializer):
 
 
 class DocumentBulkDeleteView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         serializer = BulkDeleteSerializer(data=request.data)
@@ -195,7 +195,7 @@ class DocumentBulkDeleteView(APIView):
 
 
 class TagSuggestionView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     @staticmethod
     def _extract_content_tags(filename):
@@ -281,7 +281,7 @@ class TagSuggestionView(APIView):
         return Response({"suggestions": top}, status=status.HTTP_200_OK)
 
 class DocumentExtractTextView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
         document = get_object_or_404(Document, pk=pk)
@@ -296,7 +296,7 @@ class DocumentExtractTextView(APIView):
         )
     
 class DocumentRelatedView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, pk):
         document = get_object_or_404(
@@ -316,7 +316,7 @@ class DocumentRelatedView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class DocumentStatisticsView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         query_serializer = StatisticsQuerySerializer(data=request.query_params)

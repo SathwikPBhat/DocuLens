@@ -92,12 +92,11 @@ def process_document_extraction(document_id, use_ocr=False):
         if is_image_file(file_name, content_type):
             extracted_text = ocr_image_path(file_path)
         elif is_pdf_file(file_name, content_type):
-            extracted_text = extract_pdf_text(file_path)
-
-            if use_ocr and not extracted_text.strip():
+            if use_ocr:
+                # Explicit OCR mode for PDFs: skip embedded text extraction
                 extracted_text = ocr_pdf_pages(file_path)
-        else:
-            extracted_text = ""
+            else:
+                extracted_text = extract_pdf_text(file_path)
 
         Document.objects.filter(pk=document_id).update(extracted_text=extracted_text)
     except Exception:
